@@ -1,7 +1,6 @@
-import { GeneratedContact, mergeContactInfo } from "../lib/contact-generator/contact-generator";
+import { GeneratedContact, mergeContactInfo } from '../lib/contact-generator/contact-generator';
 
 describe('updating latest contact properties', () => {
-
   it('gathers name, phone, and address separately', () => {
     const a = fakeContact({
       lastUpdated: '2021-04-02',
@@ -16,27 +15,29 @@ describe('updating latest contact properties', () => {
         lastName: 'lastName',
       }),
       fakeContact({
-        phone: 'phone',
+        // phone: 'phone',
       }),
       fakeContact({
-        city: 'city',
-        state: 'state',
+        // city: 'city',
+        // state: 'state',
       }),
       a,
     ]);
 
-    expect(a).toEqual(fakeContact({
-      lastUpdated: '2021-04-02',
-      country: 'country2',
-      region: 'region2',
-      deployment: new Set(['Server']),
-      email: 'email2',
-      firstName: 'firstName',
-      lastName: 'lastName',
-      phone: 'phone',
-      city: 'city',
-      state: 'state',
-    }));
+    expect(a).toEqual(
+      fakeContact({
+        lastUpdated: '2021-04-02',
+        country: 'country2',
+        region: 'region2',
+        deployment: new Set(['Server']),
+        email: 'email2',
+        firstName: 'firstName',
+        lastName: 'lastName',
+        // phone: 'phone',
+        // city: 'city',
+        // state: 'state',
+      })
+    );
   });
 
   it('gets the newest full firstName/lastName pair if present', () => {
@@ -59,10 +60,12 @@ describe('updating latest contact properties', () => {
       a,
     ]);
 
-    expect(a).toEqual(fakeContact({
-      firstName: 'firstName2',
-      lastName: 'lastName2',
-    }));
+    expect(a).toEqual(
+      fakeContact({
+        firstName: 'firstName2',
+        lastName: 'lastName2',
+      })
+    );
   });
 
   it('uses first found firstName and lastName if no pair present', () => {
@@ -78,10 +81,12 @@ describe('updating latest contact properties', () => {
       a,
     ]);
 
-    expect(a).toEqual(fakeContact({
-      firstName: 'firstName1',
-      lastName: 'lastName2',
-    }));
+    expect(a).toEqual(
+      fakeContact({
+        firstName: 'firstName1',
+        lastName: 'lastName2',
+      })
+    );
   });
 
   it('uses neither city nor state if no pair present', () => {
@@ -89,18 +94,20 @@ describe('updating latest contact properties', () => {
 
     mergeContactInfo(a, [
       fakeContact({
-        city: 'city1',
+        // city: 'city1',
       }),
       fakeContact({
-        state: 'state2',
+        // state: 'state2',
       }),
       a,
     ]);
 
-    expect(a).toEqual(fakeContact({
-      city: 'city1',
-      state: 'state2',
-    }));
+    expect(a).toEqual(
+      fakeContact({
+        // city: 'city1',
+        // state: 'state2',
+      })
+    );
   });
 
   it('updates canonical to Partner if any are Partner', () => {
@@ -108,20 +115,22 @@ describe('updating latest contact properties', () => {
 
     mergeContactInfo(a, [
       fakeContact({
-        city: 'city1',
+        // city: 'city1',
         contactType: 'Partner',
       }),
       fakeContact({
-        state: 'state2',
+        // state: 'state2',
       }),
       a,
     ]);
 
-    expect(a).toEqual(fakeContact({
-      city: 'city1',
-      state: 'state2',
-      contactType: 'Partner',
-    }));
+    expect(a).toEqual(
+      fakeContact({
+        // city: 'city1',
+        // state: 'state2',
+        contactType: 'Partner',
+      })
+    );
   });
 
   it('makes the last as canonical when "updated" is tied', () => {
@@ -129,9 +138,9 @@ describe('updating latest contact properties', () => {
       email: 'email1',
       firstName: 'firstName2',
       lastName: 'lastName2',
-      phone: null,
-      city: null,
-      state: null,
+      // phone: null,
+      // city: null,
+      // state: null,
     });
 
     mergeContactInfo(a, [
@@ -140,29 +149,28 @@ describe('updating latest contact properties', () => {
         email: 'email2',
         firstName: 'firstName1',
         lastName: 'lastName1',
-        phone: 'phone',
-        city: 'city',
-        state: 'state',
+        // phone: 'phone',
+        // city: 'city',
+        // state: 'state',
       }),
     ]);
 
-    expect(a).toEqual(fakeContact({
-      email: 'email1',
-      firstName: 'firstName2',
-      lastName: 'lastName2',
-      phone: 'phone',
-      city: 'city',
-      state: 'state',
-    }));
+    expect(a).toEqual(
+      fakeContact({
+        email: 'email1',
+        firstName: 'firstName2',
+        lastName: 'lastName2',
+        // phone: 'phone',
+        // city: 'city',
+        // state: 'state',
+      })
+    );
   });
 
   it('keeps products', () => {
     const a = fakeContact({ products: new Set(['p1', 'p2']) });
 
-    mergeContactInfo(a, [
-      fakeContact({ products: new Set() }),
-      a,
-    ]);
+    mergeContactInfo(a, [fakeContact({ products: new Set() }), a]);
 
     expect(a).toEqual(fakeContact({ products: new Set(['p1', 'p2']) }));
   });
@@ -170,10 +178,7 @@ describe('updating latest contact properties', () => {
   it('adds products', () => {
     const a = fakeContact({ products: new Set() });
 
-    mergeContactInfo(a, [
-      fakeContact({ products: new Set(['p2', 'p3']) }),
-      a,
-    ]);
+    mergeContactInfo(a, [fakeContact({ products: new Set(['p2', 'p3']) }), a]);
 
     expect(a).toEqual(fakeContact({ products: new Set(['p2', 'p3']) }));
   });
@@ -181,10 +186,7 @@ describe('updating latest contact properties', () => {
   it('merges products', () => {
     const a = fakeContact({ products: new Set(['p1', 'p2']) });
 
-    mergeContactInfo(a, [
-      fakeContact({ products: new Set(['p2', 'p3']) }),
-      a,
-    ]);
+    mergeContactInfo(a, [fakeContact({ products: new Set(['p2', 'p3']) }), a]);
 
     expect(a).toEqual(fakeContact({ products: new Set(['p1', 'p2', 'p3']) }));
   });
@@ -192,14 +194,10 @@ describe('updating latest contact properties', () => {
   it('merges deployments', () => {
     const a = fakeContact({ deployment: new Set(['Server']) });
 
-    mergeContactInfo(a, [
-      fakeContact({ deployment: new Set(['Cloud']) }),
-      a,
-    ]);
+    mergeContactInfo(a, [fakeContact({ deployment: new Set(['Cloud']) }), a]);
 
     expect(a).toEqual(fakeContact({ deployment: new Set(['Cloud', 'Server']) }));
   });
-
 });
 
 function fakeContact(props: Partial<GeneratedContact>): GeneratedContact {
@@ -212,14 +210,14 @@ function fakeContact(props: Partial<GeneratedContact>): GeneratedContact {
     deployment: new Set(['Server']),
     firstName: null,
     lastName: null,
-    phone: null,
-    city: null,
-    state: null,
+    // phone: null,
+    // city: null,
+    // state: null,
     products: new Set(),
     lastMpacEvent: null,
     licenseTier: null,
     relatedProducts: new Set(),
     lastAssociatedPartner: null,
-    ...props
+    ...props,
   };
 }

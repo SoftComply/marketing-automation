@@ -39,7 +39,8 @@ export class MarketplaceAPI {
   }
 
   public async downloadLicensesWithoutDataInsights(): Promise<RawLicense[]> {
-    const licenseGroups = await Promise.all(this.singleApis.map((api) => api.downloadLicensesWithoutDataInsights()));
+    // const licenseGroups = await Promise.all(this.singleApis.map((api) => api.downloadLicensesWithoutDataInsights()));
+    const licenseGroups: RawLicense[] = [];
     return licenseGroups.flat();
   }
 
@@ -61,7 +62,8 @@ export class MarketplaceAPI {
 }
 
 export function dataInsightDateRanges() {
-  return Interval.fromDateTimes(DateTime.local(2018, 7, 1), DateTime.local())
+  // return Interval.fromDateTimes(DateTime.local(2018, 7, 1), DateTime.local())
+  return Interval.fromDateTimes(DateTime.local(2024, 1, 1), DateTime.local())
     .splitBy(Duration.fromObject({ months: 2 }))
     .map((int) => ({
       startDate: int.start.toISODate(),

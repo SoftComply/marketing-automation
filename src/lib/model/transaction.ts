@@ -1,49 +1,52 @@
-import assert from "assert";
-import { getContactInfo, getPartnerInfo, maybeGetContactInfo, RawTransaction } from "../marketplace/raw";
-import { License } from "./license";
-import { ContactInfo, MpacRecord, PartnerInfo } from "./record";
+import assert from 'assert';
+import { getContactInfo, getPartnerInfo, maybeGetContactInfo, RawTransaction } from '../marketplace/raw';
+import { License } from './license';
+import { ContactInfo, MpacRecord, PartnerInfo } from './record';
 
 export interface TransactionData {
-  addonLicenseId: string | null,
-  appEntitlementId: string | null,
-  appEntitlementNumber: string | null,
+  addonLicenseId: string | null;
+  appEntitlementId: string | null;
+  appEntitlementNumber: string | null;
 
-  licenseId: string | null,
-  addonKey: string,
-  addonName: string,
-  lastUpdated: string,
+  licenseId: string | null;
+  addonKey: string;
+  addonName: string;
+  lastUpdated: string;
 
-  technicalContact: ContactInfo,
-  billingContact: ContactInfo | null,
-  partnerDetails: PartnerInfo | null,
+  technicalContact: ContactInfo;
+  billingContact: ContactInfo | null;
+  partnerDetails: PartnerInfo | null;
 
-  company: string,
-  country: string,
-  region: string,
+  company: string;
+  country: string;
+  region: string;
 
-  tier: string,
-  licenseType: 'COMMERCIAL' | 'ACADEMIC' | 'COMMUNITY',
-  hosting: 'Server' | 'Cloud' | 'Data Center',
-  maintenanceStartDate: string,
-  maintenanceEndDate: string,
+  tier: string;
+  changeInTier: string | null;
+  oldTier: string;
+  licenseType: 'COMMERCIAL' | 'ACADEMIC' | 'COMMUNITY';
+  hosting: 'Server' | 'Cloud' | 'Data Center';
+  maintenanceStartDate: string;
+  maintenanceEndDate: string;
 
-  transactionId: string,
-  saleDate: string,
-  saleType: 'Renewal' | 'Upgrade' | 'New' | 'Refund',
+  transactionId: string;
+  saleDate: string;
+  saleType: 'Renewal' | 'Upgrade' | 'New' | 'Refund';
 
-  billingPeriod: string,
+  billingPeriod: string;
 
-  purchasePrice: number,
-  vendorAmount: number,
+  purchasePrice: number;
+  vendorAmount: number;
 }
 
 export class Transaction extends MpacRecord<TransactionData> {
-
   /** Unique ID for this Transaction. */
   declare id;
   public ids = new Set<string>();
 
+  declare oldTier;
   declare tier;
+  declare changeInTier;
 
   public license!: License;
   public refunded = false;
@@ -69,6 +72,8 @@ export class Transaction extends MpacRecord<TransactionData> {
       country: rawTransaction.customerDetails.country,
       region: rawTransaction.customerDetails.region,
 
+      changeInTier: rawTransaction.purchaseDetails.changeInTier,
+      oldTier: rawTransaction.purchaseDetails.oldTier,
       tier: rawTransaction.purchaseDetails.tier,
       licenseType: rawTransaction.purchaseDetails.licenseType,
       hosting: rawTransaction.purchaseDetails.hosting,
@@ -96,12 +101,13 @@ export class Transaction extends MpacRecord<TransactionData> {
 
     this.id = [...this.ids][0];
 
-    this.tier = this.parseTier();
+    this.tier = this.parseTier(this.data.tier);
+    this.oldTier = this.parseTier(this.data.oldTier);
+    this.changeInTier = this.calculateChangeInTier();
   }
 
-  private parseTier() {
-    const tier = this.data.tier;
-
+  private parseTier(tier: string) {
+    if (tier === null || tier === 'Evaluation' || tier === '<unset>' || !tier) return 0;
     if (tier === 'Unlimited Users') return 10001;
 
     let m;
@@ -118,9 +124,17 @@ export class Transaction extends MpacRecord<TransactionData> {
     assert.fail(`Unknown transaction tier: ${tier}`);
   }
 
+  private calculateChangeInTier() {
+    const changeInTier = this.data.changeInTier;
+    if (changeInTier !== 'Increase' && changeInTier !== 'Decrease') {
+      return changeInTier;
+    } else {
+      return `${changeInTier} (${this.tier - this.oldTier})`;
+    }
+  }
 }
 
 export function uniqueTransactionId(transactionId: string, licenseId: string) {
   if (!transactionId.startsWith('AT')) transactionId = `(AT)${transactionId}`;
-  return `${transactionId}[${licenseId}]`
+  return `${transactionId}[${licenseId}]`;
 }

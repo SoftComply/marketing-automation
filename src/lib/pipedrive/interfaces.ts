@@ -1,12 +1,6 @@
-export type NewEntity = { properties: Record<string, string> };
-export type ExistingEntity = NewEntity & { id: string };
-export type FullEntity = ExistingEntity & { associations: RelativeAssociation[] };
-
-export type ResultEntity = {
-  id: string | null;
-  properties: Record<string, string>;
-  associations: RelativeAssociation[];
-};
+export type NewPipedriveEntity = { properties?: Record<string, string> | undefined };
+export type ExistingPipedriveEntity = NewPipedriveEntity & { id?: string };
+export type FullPipedriveEntity = ExistingPipedriveEntity & { associations?: RelativeAssociation[] };
 
 export type RelativeAssociation = `${string}:${string}`;
 
@@ -18,7 +12,7 @@ export type Association = {
   toType: string;
 };
 
-export type EntityKind = 'deal' | 'contact' | 'company';
+export type PipedriveEntityKind = 'deal' | 'person' | 'organization';
 
 export enum Pipeline {
   MPAC,
@@ -30,10 +24,10 @@ export enum DealStage {
   CLOSED_LOST,
 }
 
-export interface EntityAdapter<D> {
-  kind: EntityKind;
+export interface PipedriveEntityAdapter<D> {
+  kind: PipedriveEntityKind;
 
-  associations: Partial<Record<EntityKind, 'down' | 'down/up'>>;
+  associations: Partial<Record<PipedriveEntityKind, 'down' | 'down/up'>>;
 
   shouldReject?: (data: HubspotProperties) => boolean;
 

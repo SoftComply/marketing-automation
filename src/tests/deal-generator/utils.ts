@@ -1,16 +1,16 @@
 import Chance from 'chance';
 import { DateTime } from 'luxon';
-import { RawDataSet } from '../../lib/data/raw';
-import { DataSet } from '../../lib/data/set';
-import { Action } from "../../lib/deal-generator/actions";
+import { RawHubspotDataSet, RawPipedriveDataSet } from '../../lib/data/raw';
+import { HubspotDataSet, PipedriveDataSet } from '../../lib/data/set';
+import { Action } from '../../lib/deal-generator/actions';
 import { DealRelevantEvent } from '../../lib/deal-generator/events';
 import { Engine, EngineConfig } from '../../lib/engine/engine';
 import { DealStage } from '../../lib/hubspot/interfaces';
-import {RawLicense, RawLicenseContact, RawTransaction, RawTransactionContact} from '../../lib/marketplace/raw';
+import { RawLicense, RawLicenseContact, RawTransaction, RawTransactionContact } from '../../lib/marketplace/raw';
 import { Company } from '../../lib/model/company';
 import { Contact } from '../../lib/model/contact';
-import { Deal } from "../../lib/model/deal";
-import { License } from "../../lib/model/license";
+import { Deal } from '../../lib/model/deal';
+import { License } from '../../lib/model/license';
 
 const chance = new Chance();
 
@@ -26,7 +26,7 @@ export type TestInput = {
 export function runDealGeneratorTwice(input: TestInput) {
   const { dataSet, config } = processInput(input);
   const output = runDealGeneratorWith(dataSet, config);
-  return runDealGeneratorWith(DataSet.fromDataSet(output.dataSet), config);
+  return runDealGeneratorWith(PipedriveDataSet.fromDataSet(output.dataSet), config);
 }
 
 export function runDealGenerator(input: TestInput) {
@@ -34,23 +34,23 @@ export function runDealGenerator(input: TestInput) {
   return runDealGeneratorWith(dataSet, config);
 }
 
-function runDealGeneratorWith(dataSet: DataSet, config: EngineConfig) {
+function runDealGeneratorWith(dataSet: PipedriveDataSet, config: EngineConfig) {
   const engine = new Engine(config);
   const engineResults = engine.run(dataSet);
   const dealGeneratorResults = engineResults.dealGeneratorResults.get(engine.mpac.licenses[0].id)!;
-  dataSet.hubspot.populateFakeIds();
+  dataSet.pipedrive.populateFakeIds();
   return {
     dataSet,
-    deals: dataSet.hubspot.dealManager.getArray(),
-    contacts: dataSet.hubspot.contactManager.getArray(),
-    companies: dataSet.hubspot.companyManager.getArray(),
+    deals: dataSet.pipedrive.dealManager.getArray(),
+    contacts: dataSet.pipedrive.personManager.getArray(),
+    companies: dataSet.pipedrive.organizationManager.getArray(),
     actions: dealGeneratorResults.actions.map(abbrActionDetails),
     events: dealGeneratorResults.events.map(abbrEventDetails),
   };
 }
 
-function processInput(input: TestInput): { config: EngineConfig; dataSet: DataSet; } {
-  const data: RawDataSet = {
+function processInput(input: TestInput): { config: EngineConfig; dataSet: PipedriveDataSet } {
+  const data: RawPipedriveDataSet = {
     rawCompanies: [],
     rawContacts: [],
     rawDeals: [],
@@ -95,12 +95,19 @@ function processInput(input: TestInput): { config: EngineConfig; dataSet: DataSe
     }
   }
 
-  const dataSet = new DataSet(data, DateTime.now());
+  const dataSet = new PipedriveDataSet(data, DateTime.now());
 
   return { config, dataSet };
 }
 
-function rawLicenseFrom(id: string, addonKey: string, techContact: RawLicenseContact, start: string, licenseType: string, status: string): RawLicense {
+function rawLicenseFrom(
+  id: string,
+  addonKey: string,
+  techContact: RawLicenseContact,
+  start: string,
+  licenseType: string,
+  status: string
+): RawLicense {
   return {
     addonKey,
     addonName: chance.sentence({ words: 3, punctuation: false }),
@@ -124,7 +131,13 @@ function rawLicenseFrom(id: string, addonKey: string, techContact: RawLicenseCon
   };
 }
 
-function rawTransactionFrom(rawLicense: RawLicense, txId: string, saleDate: string, saleType: string, vendorAmount: number): RawTransaction {
+function rawTransactionFrom(
+  rawLicense: RawLicense,
+  txId: string,
+  saleDate: string,
+  saleType: string,
+  vendorAmount: number
+): RawTransaction {
   return {
     appEntitlementId: rawLicense.appEntitlementId,
     licenseId: rawLicense.appEntitlementId!,
@@ -136,11 +149,11 @@ function rawTransactionFrom(rawLicense: RawLicense, txId: string, saleDate: stri
       company: rawLicense.contactDetails.company ?? 'random company',
       country: rawLicense.contactDetails.country ?? 'us',
       region: rawLicense.contactDetails.region ?? 'CA',
-      technicalContact: rawLicense.contactDetails.technicalContact ?? { email: 'technical_contact@example.com'}
+      technicalContact: rawLicense.contactDetails.technicalContact ?? { email: 'technical_contact@example.com' },
     },
     transactionId: txId,
     purchaseDetails: {
-      billingPeriod: "Monthly",
+      billingPeriod: 'Monthly',
       tier: 'Unlimited Users',
       saleDate,
       maintenanceStartDate: saleDate,
@@ -150,43 +163,57 @@ function rawTransactionFrom(rawLicense: RawLicense, txId: string, saleDate: stri
       purchasePrice: vendorAmount + 1,
       vendorAmount,
       saleType: saleType as any,
+      changeInTier: 'Not Applicable',
+      oldTier: 'Unlimited Users',
     },
   };
 }
 
 export function abbrEventDetails(e: DealRelevantEvent) {
   switch (e.type) {
-    case 'eval': return [e.type, ...e.licenses.map(l => l.id)];
-    case 'purchase': return [e.type, ...e.licenses.map(l => l.id), ... (e.transaction ? [e.transaction.id] : [])];
-    case 'refund': return [e.type, ...e.refundedTxs.map(tx => tx.id)];
-    case 'renewal': return [e.type, ...[e.transaction.id]];
-    case 'upgrade': return [e.type, ...[e.transaction.id]];
+    case 'eval':
+      return [e.type, ...e.licenses.map((l) => l.id)];
+    case 'purchase':
+      return [e.type, ...e.licenses.map((l) => l.id), ...(e.transaction ? [e.transaction.id] : [])];
+    case 'refund':
+      return [e.type, ...e.refundedTxs.map((tx) => tx.id)];
+    case 'renewal':
+      return [e.type, ...[e.transaction.id]];
+    case 'upgrade':
+      return [e.type, ...[e.transaction.id]];
   }
 }
 
 export function abbrActionDetails(action: Action) {
   switch (action.type) {
-    case 'create': return {
-      "Create": {
-        dealStage: DealStage[action.properties.dealStage],
-        addonLicenseId: action.properties.addonLicenseId ?? action.properties.appEntitlementId ?? action.properties.appEntitlementNumber!,
-        transactionId: action.properties.transactionId,
-        closeDate: action.properties.closeDate,
-        amount: action.properties.amount,
-      },
-    };
-    case 'update': return {
-      "Update":
-        [action.deal.id,
-        action.properties,]
-    };
-    case 'noop': return {
-      "Nothing": [action.reason, action.deal && [
-        [...new Set(action.deal.getMpacIds())].join(','),
-        DealStage[action.deal.data.dealStage],
-        action.deal.data.amount,
-      ]]
-    };
+    case 'create':
+      return {
+        Create: {
+          dealStage: DealStage[action.properties.dealStage],
+          addonLicenseId:
+            action.properties.addonLicenseId ??
+            action.properties.appEntitlementId ??
+            action.properties.appEntitlementNumber!,
+          transactionId: action.properties.transactionId,
+          closeDate: action.properties.closeDate,
+          amount: action.properties.value,
+        },
+      };
+    case 'update':
+      return {
+        Update: [action.deal.id, action.properties],
+      };
+    case 'noop':
+      return {
+        Nothing: [
+          action.reason,
+          action.deal && [
+            [...new Set(action.deal.getMpacIds())].join(','),
+            DealStage[action.deal.data.dealStage],
+            action.deal.data.value,
+          ],
+        ],
+      };
   }
 }
 
@@ -196,11 +223,14 @@ export function abbrRecordDetails(license: License) {
     license.data.maintenanceStartDate,
     license.data.licenseType,
     license.data.status,
-    license.transactions.map(transaction => [
-      transaction.data.transactionId,
-      transaction.data.saleDate,
-      transaction.data.saleType,
-      transaction.data.vendorAmount,
-    ] as const)
+    license.transactions.map(
+      (transaction) =>
+        [
+          transaction.data.transactionId,
+          transaction.data.saleDate,
+          transaction.data.saleType,
+          transaction.data.vendorAmount,
+        ] as const
+    ),
   ] as const;
 }

@@ -1,8 +1,8 @@
 import got from 'got';
 import { Progress } from '../../log/download';
-import { KnownError, AttachableError } from '../../util/errors';
-import { RawTransaction, RawLicense } from '../raw';
-import { MpacCreds, dataInsightDateRanges } from './api';
+import { AttachableError, KnownError } from '../../util/errors';
+import { RawLicense, RawTransaction } from '../raw';
+import { dataInsightDateRanges, MpacCreds } from './api';
 
 export class SyncMarketplaceAPI {
   constructor(private creds: MpacCreds) {}
@@ -28,11 +28,10 @@ export class SyncMarketplaceAPI {
       progress.tick(`${startDate}-${endDate}`);
       return json;
     });
-    const licenses = (await Promise.all(promises)).flat();
-    return licenses;
+    return (await Promise.all(promises)).flat();
   }
 
-  private async downloadMarketplaceData<T>(subpath: string, queryParams: string = ''): Promise<T[]> {
+  private async downloadMarketplaceData<T>(subpath: string, queryParams = ''): Promise<T[]> {
     const reportingBaseUrl = `https://marketplace.atlassian.com/rest/2/vendors/${this.creds.sellerId}/reporting`;
     const url = `${reportingBaseUrl}/${subpath}/export${!queryParams.length ? '' : `?${queryParams}`}`;
     const res = await got.get(url, {

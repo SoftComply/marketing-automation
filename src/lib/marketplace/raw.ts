@@ -1,4 +1,4 @@
-import { ContactInfo, PartnerInfo } from "../model/record";
+import { ContactInfo, PartnerInfo } from '../model/record';
 
 export type RawTransactionContact = {
   email: string;
@@ -39,12 +39,13 @@ export interface RawTransaction {
     saleType: 'Renewal' | 'Upgrade' | 'New' | 'Refund';
     maintenanceStartDate: string;
     maintenanceEndDate: string;
+    changeInTier: string;
+    oldTier: string;
   };
   partnerDetails?: RawPartnerDetails;
 
   appEntitlementId?: string;
   appEntitlementNumber?: string;
-
 }
 
 export type RawLicenseContact = {
@@ -72,8 +73,16 @@ export interface RawLicense {
     billingContact?: RawLicenseContact;
   };
   tier: string;
-  licenseType: 'EVALUATION' | 'COMMERCIAL' | 'COMMUNITY' | 'ACADEMIC' | 'OPEN_SOURCE' | 'DEMONSTRATION' | 'INTERNAL USE';
+  licenseType:
+    | 'EVALUATION'
+    | 'COMMERCIAL'
+    | 'COMMUNITY'
+    | 'ACADEMIC'
+    | 'OPEN_SOURCE'
+    | 'DEMONSTRATION'
+    | 'INTERNAL USE';
   hosting: 'Server' | 'Cloud' | 'Data Center';
+  cloudSiteHostname?: string;
   maintenanceStartDate: string;
   maintenanceEndDate?: string;
   partnerDetails?: RawPartnerDetails;
@@ -103,7 +112,6 @@ export interface RawLicense {
 
   appEntitlementId?: string;
   appEntitlementNumber?: string;
-
 }
 
 export function getContactInfo(contactInfo: RawLicenseContact | RawTransactionContact): ContactInfo {
@@ -119,7 +127,9 @@ export function getContactInfo(contactInfo: RawLicenseContact | RawTransactionCo
   };
 }
 
-export function maybeGetContactInfo(contactInfo: RawLicenseContact | RawTransactionContact | undefined): ContactInfo | null {
+export function maybeGetContactInfo(
+  contactInfo: RawLicenseContact | RawTransactionContact | undefined
+): ContactInfo | null {
   if (!contactInfo) return null;
   return getContactInfo(contactInfo);
 }

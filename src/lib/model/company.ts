@@ -1,49 +1,41 @@
-import { Entity } from "../hubspot/entity";
-import { EntityAdapter } from "../hubspot/interfaces";
-import { EntityManager } from "../hubspot/manager";
-import { Contact } from "./contact";
+import { Contact } from './contact';
+import { PipedriveEntityAdapter } from '../pipedrive/interfaces';
+import { PipedriveEntity } from '../pipedrive/pipedriveEntity';
+import { PipedriveEntityManager } from '../pipedrive/pipedrive-manager';
 
-type CompanyData = {
+export type CompanyData = {
   name: string;
   type: 'Partner' | null;
 };
 
-export class Company extends Entity<CompanyData> {
-
-  public contacts = this.makeDynamicAssociation<Contact>('contact');
-
+export class Company extends PipedriveEntity<CompanyData> {
+  public contacts = this.makeDynamicAssociation<Contact>('person');
 }
 
-export const CompanyAdapter: EntityAdapter<CompanyData> = {
+export const CompanyAdapter: PipedriveEntityAdapter<CompanyData> = {
+  kind: 'organization',
 
-  kind: 'company',
-
-  associations: {
-    contact: 'down',
-  },
+  associations: {},
 
   data: {
     name: {
       property: 'name',
-      down: name => name ?? '',
-      up: name => name,
+      down: (name) => name ?? '',
+      up: (name) => name,
     },
     type: {
       property: 'type',
-      down: type => type === 'PARTNER' ? 'Partner' : null,
-      up: type => type === 'Partner' ? 'PARTNER' : '',
+      down: (type) => (type === 'PARTNER' ? 'Partner' : null),
+      up: (type) => (type === 'Partner' ? 'PARTNER' : ''),
     },
   },
 
   additionalProperties: [],
 
   managedFields: new Set(),
-
 };
 
-export class CompanyManager extends EntityManager<CompanyData, Company> {
-
+export class CompanyManager extends PipedriveEntityManager<CompanyData, Company> {
   protected override Entity = Company;
   public override entityAdapter = CompanyAdapter;
-
 }

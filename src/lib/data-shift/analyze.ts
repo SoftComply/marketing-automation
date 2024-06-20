@@ -1,13 +1,13 @@
-import { DateTime } from "luxon";
-import { DataSet } from "../data/set";
-import { ConsoleLogger } from "../log/console";
-import { Marketplace } from "../marketplace/marketplace";
-import { License } from "../model/license";
-import { Transaction } from "../model/transaction";
-import { MultiRecordMap } from "./multi-id-map";
+import { DateTime } from 'luxon';
+import { HubspotDataSet, PipedriveDataSet } from '../data/set';
+import { ConsoleLogger } from '../log/console';
+import { Marketplace } from '../marketplace/marketplace';
+import { License } from '../model/license';
+import { Transaction } from '../model/transaction';
+import { MultiRecordMap } from './multi-id-map';
 
 export interface DataShiftConfig {
-  lateTransactionThresholdDays: number,
+  lateTransactionThresholdDays: number;
 }
 
 const defaultConfig: DataShiftConfig = {
@@ -15,86 +15,78 @@ const defaultConfig: DataShiftConfig = {
 };
 
 export interface DeletedRecordIssue {
-  id: string,
-  timestampNotFound: string,
-  timestampLastSeen: string,
+  id: string;
+  timestampNotFound: string;
+  timestampLastSeen: string;
 }
 
 export interface LateTransactionIssue {
-  id: string,
-  expected: string,
-  found: string,
+  id: string;
+  expected: string;
+  found: string;
 }
 
 export interface AlteredRecordIssue {
-  id: string,
-  key: string,
-  val: any,
-  lastVal: any,
+  id: string;
+  key: string;
+  val: any;
+  lastVal: any;
 }
 
 export class DataShiftAnalyzer {
-
   #logStep = (...args: any[]) => this.console?.printInfo('Analyze Data Shift', ...args);
 
   #config;
   constructor(
     config?: DataShiftConfig,
-    private console?: ConsoleLogger,
+    private console?: ConsoleLogger
   ) {
     this.#config = config ?? defaultConfig;
   }
 
-  public run(dataSetsAsc: DataSet[]) {
+  public run(dataSetsAsc: PipedriveDataSet[]) {
     return {
+      deletedLicenses: this.#checkForDeletedRecords(dataSetsAsc, 'license', (mpac) => mpac.licenses),
 
-      deletedLicenses:
-        this.#checkForDeletedRecords(dataSetsAsc, 'license',
-          mpac => mpac.licenses),
+      deletedTransactions: this.#checkForDeletedRecords(dataSetsAsc, 'transaction', (mpac) => mpac.transactions),
 
-      deletedTransactions:
-        this.#checkForDeletedRecords(dataSetsAsc, 'transaction',
-          mpac => mpac.transactions),
+      lateTransactions: this.#checkForWrongTransactionDates(dataSetsAsc),
 
-      lateTransactions:
-        this.#checkForWrongTransactionDates(dataSetsAsc),
+      alteredTransactions: this.#checkForAlteredRecordData(dataSetsAsc, 'transaction', (mpac) => mpac.transactions, [
+        (d) => d.saleDate,
+        (d) => d.saleType,
 
-      alteredTransactions:
-        this.#checkForAlteredRecordData(dataSetsAsc, 'transaction',
-          mpac => mpac.transactions, [
-          d => d.saleDate,
-          d => d.saleType,
+        (d) => d.addonKey,
+        (d) => d.addonName,
+        (d) => d.hosting,
 
-          d => d.addonKey,
-          d => d.addonName,
-          d => d.hosting,
+        (d) => d.country,
+        (d) => d.region,
 
-          d => d.country,
-          d => d.region,
+        (d) => d.purchasePrice.toString(),
+        (d) => d.vendorAmount.toString(),
 
-          d => d.purchasePrice.toString(),
-          d => d.vendorAmount.toString(),
+        (d) => d.billingPeriod,
 
-          d => d.billingPeriod,
+        (d) => d.maintenanceStartDate,
+        (d) => d.maintenanceEndDate,
+      ]),
 
-          d => d.maintenanceStartDate,
-          d => d.maintenanceEndDate,
-        ]),
+      alteredLicenses: this.#checkForAlteredRecordData(dataSetsAsc, 'license', (mpac) => mpac.licenses, [
+        (d) => d.addonKey,
+        (d) => d.addonName,
+        (d) => d.hosting,
 
-      alteredLicenses:
-        this.#checkForAlteredRecordData(dataSetsAsc, 'license',
-          mpac => mpac.licenses, [
-          d => d.addonKey,
-          d => d.addonName,
-          d => d.hosting,
-
-          d => d.maintenanceStartDate,
-        ]),
-
+        (d) => d.maintenanceStartDate,
+      ]),
     };
   }
 
-  #checkForDeletedRecords<T extends License | Transaction>(dataSetsAsc: DataSet[], kind: 'license' | 'transaction', getRecords: (mpac: Marketplace) => T[]) {
+  #checkForDeletedRecords<T extends License | Transaction>(
+    dataSetsAsc: PipedriveDataSet[],
+    kind: 'license' | 'transaction',
+    getRecords: (mpac: Marketplace) => T[]
+  ) {
     const deletedRecords: DeletedRecordIssue[] = [];
 
     this.#logStep(`Checking for deleted ${kind}s: Starting...`);
@@ -131,7 +123,7 @@ export class DataShiftAnalyzer {
     return deletedRecords;
   }
 
-  #checkForWrongTransactionDates(dataSetsAsc: DataSet[]) {
+  #checkForWrongTransactionDates(dataSetsAsc: PipedriveDataSet[]) {
     const lateTransactions: LateTransactionIssue[] = [];
 
     this.#logStep(`Checking for late transactions: Starting...`);
@@ -170,10 +162,10 @@ export class DataShiftAnalyzer {
   }
 
   #checkForAlteredRecordData<T extends License | Transaction, D = T['data']>(
-    dataSetsAsc: DataSet[],
+    dataSetsAsc: PipedriveDataSet[],
     recordKind: 'license' | 'transaction',
     getRecords: (mpac: Marketplace) => T[],
-    fieldsToExamine: ((data: D) => string)[],
+    fieldsToExamine: ((data: D) => string)[]
   ) {
     const alteredRecords: AlteredRecordIssue[] = [];
 
@@ -207,5 +199,4 @@ export class DataShiftAnalyzer {
 
     return alteredRecords;
   }
-
 }

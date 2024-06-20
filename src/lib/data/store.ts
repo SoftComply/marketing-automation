@@ -1,10 +1,9 @@
-import { FullEntity } from "../hubspot/interfaces";
-import { RawLicense, RawTransaction } from "../marketplace/raw";
-import DataDir from "./dir";
-import { RawDataSet } from "./raw";
+import { FullEntity } from '../hubspot/interfaces';
+import { RawLicense, RawTransaction } from '../marketplace/raw';
+import DataDir from './dir';
+import { RawHubspotDataSet } from './raw';
 
 export class DataSetStore {
-
   private licensesWithDataInsights;
   private licensesWithoutDataInsights;
   private transactions;
@@ -25,25 +24,29 @@ export class DataSetStore {
     this.rawContacts = (ext: string) => dataDir.file<FullEntity[]>('contacts.' + ext);
   }
 
-  load(): RawDataSet {
+  load(): RawHubspotDataSet {
     return {
       licensesWithDataInsights: this.licensesWithDataInsights('csv').readArray(),
       licensesWithoutDataInsights: this.licensesWithoutDataInsights('csv').readArray(),
       transactions: this.transactions('csv').readArray(),
-      tlds: this.tlds('csv').readArray().map(({ tld }) => tld),
-      freeDomains: this.freeDomains('csv').readArray().map(({ domain }) => domain),
+      tlds: this.tlds('csv')
+        .readArray()
+        .map(({ tld }) => tld),
+      freeDomains: this.freeDomains('csv')
+        .readArray()
+        .map(({ domain }) => domain),
       rawDeals: this.rawDeals('csv').readArray(),
       rawCompanies: this.rawCompanies('csv').readArray(),
       rawContacts: this.rawContacts('csv').readArray(),
-    }
+    };
   }
 
-  save(data: RawDataSet) {
+  save(data: RawHubspotDataSet) {
     this.transactions('csv').writeArray(data.transactions);
     this.licensesWithoutDataInsights('csv').writeArray(data.licensesWithoutDataInsights);
     this.licensesWithDataInsights('csv').writeArray(data.licensesWithDataInsights);
-    this.freeDomains('csv').writeArray(data.freeDomains.map(domain => ({ domain })));
-    this.tlds('csv').writeArray(data.tlds.map(tld => ({ tld })));
+    this.freeDomains('csv').writeArray(data.freeDomains.map((domain) => ({ domain })));
+    this.tlds('csv').writeArray(data.tlds.map((tld) => ({ tld })));
     this.rawDeals('csv').writeArray(data.rawDeals);
     this.rawCompanies('csv').writeArray(data.rawCompanies);
     this.rawContacts('csv').writeArray(data.rawContacts);
@@ -54,11 +57,10 @@ export class DataSetStore {
     this.transactions('json').writeJsonArray(data.transactions);
     this.licensesWithoutDataInsights('json').writeJsonArray(data.licensesWithoutDataInsights);
     this.licensesWithDataInsights('json').writeJsonArray(data.licensesWithDataInsights);
-    this.freeDomains('json').writeJsonArray(data.freeDomains.map(domain => ({ domain })));
-    this.tlds('json').writeJsonArray(data.tlds.map(tld => ({ tld })));
+    this.freeDomains('json').writeJsonArray(data.freeDomains.map((domain) => ({ domain })));
+    this.tlds('json').writeJsonArray(data.tlds.map((tld) => ({ tld })));
     this.rawDeals('json').writeJsonArray(data.rawDeals);
     this.rawCompanies('json').writeJsonArray(data.rawCompanies);
     this.rawContacts('json').writeJsonArray(data.rawContacts);
   }
-
 }

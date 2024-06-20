@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { getContactInfo, getPartnerInfo, maybeGetContactInfo, RawLicense } from "../marketplace/raw";
+import { getContactInfo, getPartnerInfo, maybeGetContactInfo, RawLicense } from '../marketplace/raw';
 import { ContactInfo, MpacRecord, PartnerInfo } from './record.js';
 import { Transaction } from './transaction';
 
@@ -28,39 +28,47 @@ type NewEvalData = {
 };
 
 export interface LicenseData {
-  addonLicenseId: string | null,
-  appEntitlementId: string | null,
-  appEntitlementNumber: string | null,
+  addonLicenseId: string | null;
+  appEntitlementId: string | null;
+  appEntitlementNumber: string | null;
 
-  licenseId: string | null,
-  addonKey: string,
-  addonName: string,
-  lastUpdated: string,
+  licenseId: string | null;
+  addonKey: string;
+  addonName: string;
+  lastUpdated: string;
 
-  technicalContact: ContactInfo | null,
-  billingContact: ContactInfo | null,
-  partnerDetails: PartnerInfo | null,
+  technicalContact: ContactInfo | null;
+  billingContact: ContactInfo | null;
+  partnerDetails: PartnerInfo | null;
 
-  company: string | null,
-  country: string | null,
-  region: string | null,
+  company: string | null;
+  country: string | null;
+  region: string | null;
 
-  tier: string,
-  licenseType: 'COMMERCIAL' | 'ACADEMIC' | 'COMMUNITY' | 'EVALUATION' | 'OPEN_SOURCE' | 'DEMONSTRATION' | 'INTERNAL USE',
-  hosting: 'Server' | 'Cloud' | 'Data Center',
-  maintenanceStartDate: string,
-  maintenanceEndDate: string | null,
+  tier: string;
+  licenseType:
+    | 'COMMERCIAL'
+    | 'ACADEMIC'
+    | 'COMMUNITY'
+    | 'EVALUATION'
+    | 'OPEN_SOURCE'
+    | 'DEMONSTRATION'
+    | 'INTERNAL USE'
+    | 'FREE';
+  hosting: 'Server' | 'Cloud' | 'Data Center';
+  maintenanceStartDate: string;
+  maintenanceEndDate: string | null;
+  cloudSiteHostname: string | null;
 
-  status: 'inactive' | 'active' | 'cancelled',
+  status: 'inactive' | 'active' | 'cancelled';
 
-  evaluationOpportunitySize: string,
-  attribution: AttributionData | null,
-  parentInfo: ParentProductInfo | null,
-  newEvalData: NewEvalData | null,
+  evaluationOpportunitySize: string;
+  attribution: AttributionData | null;
+  parentInfo: ParentProductInfo | null;
+  newEvalData: NewEvalData | null;
 }
 
 export class License extends MpacRecord<LicenseData> {
-
   /** Unique ID for this License. */
   declare id;
   public ids = new Set<string>();
@@ -83,10 +91,12 @@ export class License extends MpacRecord<LicenseData> {
     }
 
     let parentInfo: ParentProductInfo | null = null;
-    if (rawLicense.parentProductBillingCycle
-      || rawLicense.parentProductName
-      || rawLicense.installedOnSandbox
-      || rawLicense.parentProductEdition) {
+    if (
+      rawLicense.parentProductBillingCycle ||
+      rawLicense.parentProductName ||
+      rawLicense.installedOnSandbox ||
+      rawLicense.parentProductEdition
+    ) {
       parentInfo = {
         parentProductBillingCycle: rawLicense.parentProductBillingCycle,
         parentProductName: rawLicense.parentProductName,
@@ -105,7 +115,9 @@ export class License extends MpacRecord<LicenseData> {
       addonName: rawLicense.addonName,
       lastUpdated: rawLicense.lastUpdated,
 
-      technicalContact: rawLicense.contactDetails.technicalContact ? getContactInfo(rawLicense.contactDetails.technicalContact) : null,
+      technicalContact: rawLicense.contactDetails.technicalContact
+        ? getContactInfo(rawLicense.contactDetails.technicalContact)
+        : null,
       billingContact: maybeGetContactInfo(rawLicense.contactDetails.billingContact),
       partnerDetails: getPartnerInfo(rawLicense.partnerDetails),
 
@@ -118,10 +130,13 @@ export class License extends MpacRecord<LicenseData> {
       hosting: rawLicense.hosting,
       maintenanceStartDate: rawLicense.maintenanceStartDate,
       maintenanceEndDate: rawLicense.maintenanceEndDate ?? null,
+      cloudSiteHostname: rawLicense.cloudSiteHostname ?? null,
 
       status: rawLicense.status,
       evaluationOpportunitySize: rawLicense.evaluationOpportunitySize ?? '',
-      attribution: rawLicense.attribution?.channel ? {...rawLicense.attribution, channel: rawLicense.attribution.channel, }  : null,
+      attribution: rawLicense.attribution?.channel
+        ? { ...rawLicense.attribution, channel: rawLicense.attribution.channel }
+        : null,
       parentInfo,
       newEvalData,
     });
@@ -155,13 +170,16 @@ export class License extends MpacRecord<LicenseData> {
       case 'Subscription': // it'll be in evaluationOpportunitySize instead
       case 'Evaluation':
       case 'Demonstration License':
+      case '':
+      case null:
+      case undefined:
         return -1;
     }
 
     const m = tier.match(/^(\d+) Users$/);
     assert.ok(m, `Unknown license tier: ${tier}`);
 
-    return + m[1];
+    return +m[1];
   }
 
   private tierFromEvalOpportunity() {
@@ -180,5 +198,4 @@ export class License extends MpacRecord<LicenseData> {
         return +size;
     }
   }
-
 }

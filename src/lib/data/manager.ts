@@ -2,11 +2,11 @@ import * as luxon from 'luxon';
 import { DateTime } from 'luxon';
 import { ConsoleLogger } from '../log/console';
 import { LogDir } from '../log/logdir';
-import { withAutoClose } from "../util/helpers";
-import DataDir from "./dir";
-import { RawDataSet } from './raw';
+import { withAutoClose } from '../util/helpers';
+import DataDir from './dir';
+import { RawHubspotDataSet, RawPipedriveDataSet } from './raw';
 import { DataSetScheduler } from './scheduler';
-import { DataSet, dataSetConfigFromENV } from './set';
+import { HubspotDataSet, dataSetConfigFromENV, PipedriveDataSet } from './set';
 import { DataSetStore } from './store';
 
 interface Metadata {
@@ -15,7 +15,6 @@ interface Metadata {
 }
 
 class DataManager {
-
   #metafile = DataDir.root.file('meta.json');
   #meta: Metadata;
 
@@ -28,7 +27,7 @@ class DataManager {
     };
   }
 
-  public createDataSet(data: RawDataSet) {
+  public createDataSet(data: RawPipedriveDataSet) {
     const ms = Date.now();
     this.#meta.timestamps.unshift(ms);
     this.#save();
@@ -49,7 +48,7 @@ class DataManager {
     const data = dataStore.load();
     console?.printInfo('Data manager', `Done.`);
 
-    const dataSet = new DataSet(data, DateTime.fromMillis(ms), dataSetConfigFromENV(), console);
+    const dataSet = new PipedriveDataSet(data, DateTime.fromMillis(ms), dataSetConfigFromENV(), console);
 
     dataSet.makeLogDir = (name) => new LogDir(dataDir.subdir(name));
 
@@ -82,16 +81,17 @@ class DataManager {
     console.printInfo('Data Manager', 'Using backup schedule', this.#scheduler.readableSchedule());
     console.printInfo('Data Manager', 'Checking', this.#meta.timestamps.map(readableTimestamp));
 
-    const dirs = this.#meta.timestamps.map(ms => {
+    const dirs = this.#meta.timestamps.map((ms) => {
       const timestamp = luxon.DateTime.fromMillis(ms);
       return { ms, timestamp };
     });
 
-    const toKeep = (this.#scheduler.check(luxon.DateTime.now(), dirs)
+    const toKeep = this.#scheduler
+      .check(luxon.DateTime.now(), dirs)
       .map(({ ms }) => ms)
-      .reverse());
+      .reverse();
 
-    const toDelete = this.#meta.timestamps.filter(ms => !toKeep.includes(ms));
+    const toDelete = this.#meta.timestamps.filter((ms) => !toKeep.includes(ms));
 
     this.#meta.timestamps = toKeep;
     this.#save();
@@ -111,11 +111,10 @@ class DataManager {
   }
 
   #save() {
-    withAutoClose(this.#metafile.writeStream(), stream => {
+    withAutoClose(this.#metafile.writeStream(), (stream) => {
       stream.writeLine(JSON.stringify(this.#meta, null, 2));
     });
   }
-
 }
 
 export const dataManager = new DataManager();

@@ -4,8 +4,8 @@ import { EngineConfig } from '../engine/engine';
 import { HubspotCreds } from '../hubspot/api';
 import { MultiMpacCreds } from '../marketplace/api/api';
 import { MpacConfig } from '../marketplace/marketplace';
-import { HubspotContactConfig } from '../model/contact';
-import { HubspotDealConfig } from '../model/deal';
+import { HubspotContactConfig, PipedriveContactConfig } from '../model/contact';
+import { HubspotDealConfig, PipedriveDealConfig } from '../model/deal';
 import { RunLoopConfig } from '../util/runner';
 
 dotenv.config();
@@ -20,9 +20,24 @@ export function hubspotCredsFromENV(): HubspotCreds {
   };
 }
 
+export function pipedriveCredsFromENV() {
+  return {
+    apiKey: required('PIPEDRIVE_API_KEY'),
+  };
+}
+
 export function hubspotSettingsFromENV() {
   const typeMappings = optional('HUBSPOT_ASSOCIATION_TYPE_MAPPINGS');
   return typeMappings ? new Map(typeMappings.split(',').map((kv) => kv.split(':') as [string, string])) : undefined;
+}
+
+export function pipedriveSettingsFromENV() {
+  const typeMappings = optional('PIPEDRIVE_ASSOCIATION_TYPE_MAPPINGS');
+  return typeMappings ? new Map(typeMappings.split(',').map((kv) => kv.split(':') as [string, string])) : undefined;
+}
+
+export function crmProviderFromEnv() {
+  return required('CRM_PROVIDER');
 }
 
 export function mpacCredsFromENV(): MultiMpacCreds {
@@ -87,7 +102,79 @@ export function hubspotDealConfigFromENV(): HubspotDealConfig {
   };
 }
 
+export function pipedriveDealConfigFromENV(): PipedriveDealConfig {
+  return {
+    accountId: optional('PIPEDRIVE_ACCOUNT_ID'),
+    pipeline: {
+      mpac: required('PIPEDRIVE_PIPELINE_MPAC'),
+    },
+    dealstage: {
+      eval: required('PIPEDRIVE_DEALSTAGE_EVAL'),
+      closedWon: required('PIPEDRIVE_DEALSTAGE_CLOSED_WON'),
+      closedLost: required('PIPEDRIVE_DEALSTAGE_CLOSED_LOST'),
+    },
+    attrs: {
+      app: required('PIPEDRIVE_DEAL_APP_ATTR'),
+      deployment: required('PIPEDRIVE_DEAL_DEPLOYMENT_ATTR'),
+      appEntitlementId: required('PIPEDRIVE_DEAL_APPENTITLEMENTID_ATTR'),
+      appEntitlementNumber: required('PIPEDRIVE_DEAL_APPENTITLEMENTNUMBER_ATTR'),
+      addonLicenseId: required('PIPEDRIVE_DEAL_ADDONLICENESID_ATTR'),
+      transactionId: required('PIPEDRIVE_DEAL_TRANSACTIONID_ATTR'),
+      maintenanceEndDate: required('PIPEDRIVE_DEAL_MAINTENANCE_END_DATE_ATTR'),
+      closeDate: required('PIPEDRIVE_DEAL_CLOSE_DATE_ATTR'),
+      licenseTier: required('PIPEDRIVE_DEAL_LICENSE_TIER_ATTR'),
+      licenseType: required('PIPEDRIVE_DEAL_LICENSE_TYPE_ATTR'),
+      cloudSiteHostname: optional('PIPEDRIVE_DEAL_CLOUD_SITE_ATTR'),
+      country: optional('PIPEDRIVE_DEAL_COUNTRY_ATTR'),
+      changeInTier: optional('PIPEDRIVE_DEAL_CHANGE_IN_TIER_ATTR'),
+      oldTier: optional('PIPEDRIVE_DEAL_OLD_TIER_ATTR'),
+      billingPeriod: optional('PIPEDRIVE_DEAL_BILLING_PERIOD_ATTR'),
+      saleType: optional('PIPEDRIVE_DEAL_SALE_TYPE_ATTR'),
+      company: optional('PIPEDRIVE_DEAL_COMPANY_ATTR'),
+      // relatedProducts: optional('HUBSPOT_DEAL_RELATED_PRODUCTS_ATTR'),
+      // origin: optional('HUBSPOT_DEAL_ORIGIN_ATTR'),
+      // associatedPartner: optional('HUBSPOT_DEAL_ASSOCIATED_PARTNER'),
+      // duplicateOf: optional('HUBSPOT_DEAL_DUPLICATEOF_ATTR'),
+    },
+    // managedFields: new Set(optional('HUBSPOT_MANAGED_DEAL_FIELDS')?.split(/\s*,\s*/g) ?? []),
+  };
+}
+
+export function pipedrivePipelineFromEnv() {
+  return required('PIPEDRIVE_PIPELINE_MPAC');
+}
+
+export function closedWonStageFromEnv() {
+  return required('PIPEDRIVE_DEALSTAGE_CLOSED_WON');
+}
+
+export function closedLostStageFromEnv() {
+  return required('PIPEDRIVE_DEALSTAGE_CLOSED_LOST');
+}
+
+export function appEntitlementIdFromEnv() {
+  return required('PIPEDRIVE_DEAL_APPENTITLEMENTID_ATTR');
+}
+
+export function appEntitlementNumberFromEnv() {
+  return required('PIPEDRIVE_DEAL_APPENTITLEMENTNUMBER_ATTR');
+}
+
+export function addonLicenseIdFromEnv() {
+  return required('PIPEDRIVE_DEAL_ADDONLICENESID_ATTR');
+}
+
+export function transactionIdFromEnv() {
+  return required('PIPEDRIVE_DEAL_TRANSACTIONID_ATTR');
+}
+
+export function maintenanceEndDateFromEnv() {
+  return required('PIPEDRIVE_DEAL_MAINTENANCE_END_DATE_ATTR');
+}
+
 export const hubspotAccountIdFromEnv = optional('HUBSPOT_ACCOUNT_ID');
+
+export const pipedriveDomainFromEnv = required('PIPEDRIVE_DOMAIN');
 
 export function hubspotContactConfigFromENV(): HubspotContactConfig {
   return {
@@ -102,6 +189,23 @@ export function hubspotContactConfigFromENV(): HubspotContactConfig {
       lastAssociatedPartner: optional('HUBSPOT_CONTACT_LAST_ASSOCIATED_PARTNER'),
     },
     managedFields: new Set(optional('HUBSPOT_MANAGED_CONTACT_FIELDS')?.split(/\s*,\s*/g) ?? []),
+  };
+}
+
+export function pipedriveContactConfigFromENV(): PipedriveContactConfig {
+  return {
+    attrs: {
+      deployment: optional('PIPEDRIVE_CONTACT_DEPLOYMENT_ATTR'),
+      licenseTier: optional('PIPEDRIVE_CONTACT_LICENSE_TIER_ATTR'),
+      products: optional('PIPEDRIVE_CONTACT_PRODUCTS_ATTR'),
+      lastMpacEvent: optional('PIPEDRIVE_CONTACT_LAST_MPAC_EVENT_ATTR'),
+      contactType: optional('PIPEDRIVE_CONTACT_CONTACT_TYPE_ATTR'),
+      region: optional('PIPEDRIVE_CONTACT_REGION_ATTR'),
+      relatedProducts: optional('PIPEDRIVE_CONTACT_RELATED_PRODUCTS_ATTR'),
+      lastAssociatedPartner: optional('PIPEDRIVE_CONTACT_LAST_ASSOCIATED_PARTNER'),
+      country: optional('PIPEDRIVE_CONTACT_COUNTRY_ATTR'),
+    },
+    managedFields: new Set(optional('PIPEDRIVE_MANAGED_CONTACT_FIELDS')?.split(/\s*,\s*/g) ?? []),
   };
 }
 

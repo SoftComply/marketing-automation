@@ -1,15 +1,14 @@
-import assert from "assert";
-import { Engine } from "../engine/engine";
-import { RelatedLicenseSet } from "../license-matching/license-grouper";
-import { Table } from "../log/table";
-import { Deal } from "../model/deal";
-import { License, LicenseData } from "../model/license";
-import { Transaction } from "../model/transaction";
-import { formatMoney } from "../util/formatters";
-import { isPresent, sorter, withAutoClose } from "../util/helpers";
-import { Action, ActionGenerator } from "./actions";
-import { DealRelevantEvent, EventGenerator } from "./events";
-
+import assert from 'assert';
+import { Engine } from '../engine/engine';
+import { RelatedLicenseSet } from '../license-matching/license-grouper';
+import { Table } from '../log/table';
+import { Deal } from '../model/deal';
+import { License, LicenseData } from '../model/license';
+import { Transaction } from '../model/transaction';
+import { formatMoney } from '../util/formatters';
+import { isPresent, sorter, withAutoClose } from '../util/helpers';
+import { Action, ActionGenerator } from './actions';
+import { DealRelevantEvent, EventGenerator } from './events';
 
 export type IgnoredLicense = LicenseData & {
   reason: string;
@@ -24,22 +23,22 @@ interface DealGeneratorResult {
 
 /** Generates deal actions based on match data */
 export class DealGenerator {
-
   private actionGenerator: ActionGenerator;
 
   private ignoredAmounts = new Map<string, number>();
 
   public constructor(private engine: Engine) {
     this.actionGenerator = new ActionGenerator(
-      engine.hubspot.dealManager,
+      engine.pipedrive.dealManager,
       engine.dealPropertyConfig,
       (reason, amount) => this.ignore(reason, amount),
-      engine.console,
+      engine.console
     );
   }
 
   public run(matchGroups: RelatedLicenseSet[]) {
-    return withAutoClose(this.engine.logDir?.dealGeneratorLog(), logger => {
+    // console.log('matchGroups: ', matchGroups);
+    return withAutoClose(this.engine.logDir?.dealGeneratorLog(), (logger) => {
       const results = new Map<string, DealGeneratorResult>();
 
       for (const relatedLicenses of matchGroups) {
@@ -50,13 +49,13 @@ export class DealGenerator {
         logger?.logActions(actions);
 
         for (const license of relatedLicenses) {
-          results.set(license.id, { records, events, actions })
+          // console.log('license.id: ', license.id, 'records: ', records, 'events: ', events, 'actions: ', actions);
+          results.set(license.id, { records, events, actions });
         }
 
         for (const action of actions) {
-          const deal = (action.type === 'create'
-            ? this.engine.hubspot.dealManager.create(action.properties)
-            : action.deal);
+          const deal =
+            action.type === 'create' ? this.engine.pipedrive.dealManager.create(action.properties) : action.deal;
 
           if (deal) {
             this.associateDealContactsAndCompanies(relatedLicenses, deal);
@@ -75,10 +74,7 @@ export class DealGenerator {
   }
 
   private printIgnoredTransactionsTable() {
-    const table = new Table([
-      { title: 'Reason Ignored' },
-      { title: 'Amount Ignored', align: 'right' },
-    ]);
+    const table = new Table([{ title: 'Reason Ignored' }, { title: 'Amount Ignored', align: 'right' }]);
     for (const [reason, amount] of this.ignoredAmounts) {
       table.rows.push([reason, formatMoney(amount)]);
     }
@@ -95,7 +91,7 @@ export class DealGenerator {
     const eventGenerator = new EventGenerator(
       this.engine.archivedApps,
       this.engine.partnerDomains,
-      this.engine.freeEmailDomains,
+      this.engine.freeEmailDomains
     );
 
     const records = eventGenerator.getSortedRecords(group);
@@ -106,16 +102,12 @@ export class DealGenerator {
   }
 
   private associateDealContactsAndCompanies(group: RelatedLicenseSet, deal: Deal) {
-    const records = group.flatMap(license => [license, ...license.transactions]);
-    const emails = [...new Set(records.flatMap(r => r.allContacts.map(c => c.data.email)))];
-    const contacts = (emails
-      .map(email => this.engine.hubspot.contactManager.getByEmail(email))
-      .filter(isPresent));
-    contacts.sort(sorter(c => c.isCustomer ? -1 : 0));
+    const records = group.flatMap((license) => [license, ...license.transactions]);
+    const emails = [...new Set(records.flatMap((r) => r.allContacts.map((c) => c.data.email)))];
+    const contacts = emails.map((email) => this.engine.pipedrive.personManager.getByEmail(email)).filter(isPresent);
+    contacts.sort(sorter((c) => (c.isCustomer ? -1 : 0)));
 
-    const companies = (contacts
-      .filter(c => c.isCustomer)
-      .flatMap(c => c.companies.getAll()));
+    const companies = contacts.filter((c) => c.isCustomer).flatMap((c) => c.companies.getAll());
 
     deal.contacts.clear();
     for (const contact of contacts) {
@@ -132,5 +124,4 @@ export class DealGenerator {
     const oldAmount = this.ignoredAmounts.get(reason) ?? 0;
     this.ignoredAmounts.set(reason, oldAmount + amount);
   }
-
 }

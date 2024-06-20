@@ -2,7 +2,7 @@ import got from 'got';
 import { Progress } from '../../log/download';
 import { KnownError, AttachableError } from '../../util/errors';
 import { RawTransaction, RawLicense } from '../raw';
-import { MpacCreds } from './api';
+import { dataInsightDateRanges, MpacCreds } from './api';
 
 type ExportProcessInfo = {
   exportId: string;
@@ -13,25 +13,34 @@ type ExportProcessInfo = {
 const MARKETPLACE_BASE_URL = 'https://marketplace.atlassian.com';
 
 export class AsyncMarketplaceAPI {
-  constructor(private creds: MpacCreds, private statusPollingTime: number = 5000) {}
+  constructor(
+    private creds: MpacCreds,
+    private statusPollingTime: number = 5000
+  ) {}
 
   public async downloadTransactions(): Promise<RawTransaction[]> {
-    const transactions = await this.downloadMarketplaceData('sales/transactions');
+    const dates = dataInsightDateRanges();
+    const startDate = dates[0].startDate;
+    const transactions = await this.downloadMarketplaceData('sales/transactions', `startDate=${startDate}`);
+    // const transactions = await this.downloadMarketplaceData('sales/transactions');
     return transactions as RawTransaction[];
   }
 
   public async downloadLicensesWithoutDataInsights(): Promise<RawLicense[]> {
     const licenses = await this.downloadMarketplaceData('licenses', 'endDate=2018-07-01');
-    return licenses as RawLicense[];
+    return [] as RawLicense[];
+    // return licenses as RawLicense[];
   }
 
   public async downloadLicensesWithDataInsights(progress: Progress): Promise<RawLicense[]> {
-    const licenses = await this.downloadMarketplaceData('licenses', 'startDate=2018-07-01');
+    const dates = dataInsightDateRanges();
+    const startDate = dates[0].startDate;
+    const licenses = await this.downloadMarketplaceData('licenses', `startDate=${startDate}`);
     progress.tick();
     return licenses as RawLicense[];
   }
 
-  private async downloadMarketplaceData<T>(subpath: string, queryParams: string = ''): Promise<T[]> {
+  private async downloadMarketplaceData<T>(subpath: string, queryParams = ''): Promise<T[]> {
     const reportingBaseUrl = `${MARKETPLACE_BASE_URL}/rest/2/vendors/${this.creds.sellerId}/reporting`;
     const exportProcessInfo = await this.initiateExport(
       reportingBaseUrl,
@@ -65,7 +74,7 @@ export class AsyncMarketplaceAPI {
     return await this.makeMarketplaceRequest(exportProcessInfo.downloadUrl);
   }
 
-  private async makeMarketplaceRequest(url: string, isPostMethod: boolean = false): Promise<any> {
+  private async makeMarketplaceRequest(url: string, isPostMethod = false): Promise<any> {
     const method = isPostMethod ? got.post : got.get;
     const res = await method(url, {
       throwHttpErrors: false,

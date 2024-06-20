@@ -1,28 +1,29 @@
-import { EntityAdapter, EntityKind, FullEntity, RelativeAssociation } from './interfaces';
+import { PipedriveEntityAdapter, PipedriveEntityKind, RelativeAssociation } from './interfaces';
+import { FullEntity } from '../hubspot/interfaces';
 
-export interface Indexer<D extends Record<string, any>> {
-  removeIndexesFor<K extends keyof D>(key: K, entity: Entity<D>): void;
-  addIndexesFor<K extends keyof D>(key: K, val: D[K] | undefined, entity: Entity<D>): void;
+export interface PipedriveIndexer<D extends Record<string, any>> {
+  removeIndexesFor<K extends keyof D>(key: K, entity: PipedriveEntity<D>): void;
+  addIndexesFor<K extends keyof D>(key: K, val: D[K] | undefined, entity: PipedriveEntity<D>): void;
 }
 
-export abstract class Entity<D extends Record<string, any>> {
+export abstract class PipedriveEntity<D extends Record<string, any>> {
   public id: string | null;
 
   private _oldData: D = Object.create(null);
   private newData: D = Object.create(null);
 
-  private oldAssocs = new Set<Entity<any>>();
-  private newAssocs = new Set<Entity<any>>();
+  private oldAssocs = new Set<PipedriveEntity<any>>();
+  private newAssocs = new Set<PipedriveEntity<any>>();
 
   public readonly data: D;
 
   /** Don't call directly; use manager.create() */
   public constructor(
     id: string | null,
-    public adapter: EntityAdapter<D>,
+    public adapter: PipedriveEntityAdapter<D>,
     protected downloadedData: Record<string, string>,
     data: D,
-    private indexer: Indexer<D>
+    private indexer: PipedriveIndexer<D>
   ) {
     this.id = id;
     if (id) Object.assign(this._oldData, data);
@@ -74,10 +75,15 @@ export abstract class Entity<D extends Record<string, any>> {
       const compString2 = spec.makeComparable?.(v) ?? v;
 
       if (compString1 !== compString2) {
+        if (spec.property === 'value' && compString1 === null && compString2 === 0) {
+          // This is a special case for the value property, which is a string in the API but a number in the data model.
+          // The API treats 'null' and '0' as the same value, but we want to treat them as different.
+          continue;
+        }
         if (spec.property) {
           const upKey = spec.property as keyof D;
-          const upVal = spec.up(v);
-          upProperties[upKey] = upVal;
+          // console.log(`'${spec.property}' property changed: '${compString1}' != '${compString2}'`);
+          upProperties[upKey] = spec.up(v);
         }
       }
     }
@@ -86,7 +92,7 @@ export abstract class Entity<D extends Record<string, any>> {
 
   // Associations
 
-  protected makeDynamicAssociation<T extends Entity<any>>(kind: EntityKind) {
+  protected makeDynamicAssociation<T extends PipedriveEntity<any>>(kind: PipedriveEntityKind) {
     return {
       getAll: () => this.getAssociations(kind) as T[],
       add: (entity: T) => this.addAssociation(entity, { firstSide: true, initial: false }),
@@ -95,18 +101,18 @@ export abstract class Entity<D extends Record<string, any>> {
   }
 
   /** Don't use directly; use deal.contacts.add(c) etc. */
-  public addAssociation(entity: Entity<any>, meta: { firstSide: boolean; initial: boolean }) {
+  public addAssociation(entity: PipedriveEntity<any>, meta: { firstSide: boolean; initial: boolean }) {
     if (meta.initial) this.oldAssocs.add(entity);
     this.newAssocs.add(entity);
 
     if (meta.firstSide) entity.addAssociation(this, { firstSide: false, initial: meta.initial });
   }
 
-  private getAssociations(kind: EntityKind) {
+  private getAssociations(kind: PipedriveEntityKind) {
     return [...this.newAssocs].filter((e) => e.adapter.kind === kind);
   }
 
-  private clearAssociations(kind: EntityKind) {
+  private clearAssociations(kind: PipedriveEntityKind) {
     for (const e of this.newAssocs) {
       if (e.adapter.kind === kind) {
         this.newAssocs.delete(e);
@@ -125,7 +131,7 @@ export abstract class Entity<D extends Record<string, any>> {
     const toDel = [...this.oldAssocs].filter((e) => !this.newAssocs.has(e));
     return [...toAdd.map((e) => ({ op: 'add', other: e })), ...toDel.map((e) => ({ op: 'del', other: e }))] as {
       op: 'add' | 'del';
-      other: Entity<any>;
+      other: PipedriveEntity<any>;
     }[];
   }
 

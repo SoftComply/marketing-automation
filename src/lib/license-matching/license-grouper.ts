@@ -9,25 +9,23 @@ import { LicenseMatcher, ScorableLicense } from './license-matcher';
 export type RelatedLicenseSet = License[];
 
 export class LicenseGrouper {
-
   private matchGroups = new Map<License, Set<License>>();
 
   constructor(
     private freeEmailDomains: Set<string>,
     private console?: ConsoleLogger,
-    private logDir?: LogDir,
-  ) { }
+    private logDir?: LogDir
+  ) {}
 
   run(licenses: License[]): RelatedLicenseSet[] {
-    return withAutoClose(this.logDir?.scoreLogger(), scoreLogger => {
-
+    return withAutoClose(this.logDir?.scoreLogger(), (scoreLogger) => {
       const threshold = 130;
       const scorer = new LicenseMatcher(threshold, scoreLogger);
       this.matchLicenses(licenses, scorer, scoreLogger);
 
-      const matches = (Array.from(new Set(this.matchGroups.values()))
-        .map(group => Array.from(group)
-          .sort(sorter(license => license.data.maintenanceStartDate))));
+      const matches = Array.from(new Set(this.matchGroups.values())).map((group) =>
+        Array.from(group).sort(sorter((license) => license.data.maintenanceStartDate))
+      );
 
       this.logMatchResults(matches);
 
@@ -37,38 +35,40 @@ export class LicenseGrouper {
   }
 
   private logMatchResults(matches: License[][]) {
-    withAutoClose(this.logDir?.allMatchGroupsLog(), allMatchGroupsLog => {
-      withAutoClose(this.logDir?.checkMatchGroupsLog(), checkMatchGroupsLog => {
-
-        const groups = matches.map(group => group.map(shorterLicenseInfo));
+    withAutoClose(this.logDir?.allMatchGroupsLog(), (allMatchGroupsLog) => {
+      withAutoClose(this.logDir?.checkMatchGroupsLog(), (checkMatchGroupsLog) => {
+        const groups = matches.map((group) => group.map(shorterLicenseInfo));
         for (const match of groups) {
           for (const shortLicense of match) {
             allMatchGroupsLog?.writeObjectRow(shortLicense);
           }
           allMatchGroupsLog?.writeBlankRow();
 
-          if (match.length > 1 && (
-            !match.every(item => item.tech_email === match[0].tech_email) ||
-            !match.every(item => item.company === match[0].company) ||
-            !match.every(item => item.tech_address === match[0].tech_address)
-          )) {
+          if (
+            match.length > 1 &&
+            (!match.every((item) => item.tech_email === match[0].tech_email) ||
+              !match.every((item) => item.organization === match[0].organization) ||
+              !match.every((item) => item.tech_address === match[0].tech_address))
+          ) {
             for (const shortLicense of match) {
               checkMatchGroupsLog?.writeObjectRow(shortLicense);
             }
             checkMatchGroupsLog?.writeBlankRow();
           }
         }
-
       });
     });
   }
 
   private groupLicensesByProduct(licenses: License[]) {
     this.console?.printInfo('Scoring Engine', 'Grouping licenses/transactions by hosting and addonKey');
-    const productMapping = new Map<string, {
-      license: License,
-      scorable: ScorableLicense,
-    }[]>();
+    const productMapping = new Map<
+      string,
+      {
+        license: License;
+        scorable: ScorableLicense;
+      }[]
+    >();
 
     for (const license of licenses) {
       const addonKey = license.data.addonKey;
@@ -76,23 +76,25 @@ export class LicenseGrouper {
       const key = `${addonKey}, ${hosting}`;
 
       let list = productMapping.get(key);
-      if (!list) productMapping.set(key, list = []);
+      if (!list) productMapping.set(key, (list = []));
 
       const [techContactEmailPart, techContactDomain] = license.techContact.data.email.split('@');
 
       const NON_EMPTY_FIELD = /[A-Za-z0-9]/;
-      const normalizeString = (s: string | undefined | null) => s && NON_EMPTY_FIELD.test(s) ? s : '';
+      const normalizeString = (s: string | undefined | null) => (s && NON_EMPTY_FIELD.test(s) ? s : '');
 
       list.push({
         license,
         scorable: {
           momentStarted: new Date(license.data.maintenanceStartDate).getTime(),
-          momentEnded: license.data.maintenanceEndDate ? new Date(license.data.maintenanceEndDate).getTime() : Number.MAX_SAFE_INTEGER,
+          momentEnded: license.data.maintenanceEndDate
+            ? new Date(license.data.maintenanceEndDate).getTime()
+            : Number.MAX_SAFE_INTEGER,
 
           techContact: license.techContact,
           billingContact: license.billingContact,
 
-          company: normalizeString(license.data.company)?.toLowerCase(),
+          organization: normalizeString(license.data.company)?.toLowerCase(),
           companyDomain: this.freeEmailDomains.has(techContactDomain) ? '' : normalizeString(techContactDomain),
 
           techContactEmailPart,
@@ -162,15 +164,13 @@ export class LicenseGrouper {
       this.joinMatches(license.evaluatedTo, license);
     }
   }
-
 }
-
 
 export function shorterLicenseInfo(license: License) {
   return {
     id: license.id,
 
-    company: license.data.company,
+    organization: license.data.company,
 
     tech_email: license.data.technicalContact?.email,
     tech_name: license.data.technicalContact?.name,

@@ -1,15 +1,15 @@
 import { isPresent } from '../util/helpers';
-import { Entity, Indexer } from './entity';
-import { EntityKind, FullEntity, RelativeAssociation } from './interfaces';
-import { PipedriveEntityAdapter, PipedriveEntityKind } from '../pipedrive/interfaces';
+import { PipedriveEntity, PipedriveIndexer } from './pipedriveEntity';
+import { PipedriveEntityAdapter, PipedriveEntityKind, RelativeAssociation } from './interfaces';
+import { FullEntity } from '../hubspot/interfaces';
 
-export abstract class EntityManager<D extends Record<string, any>, E extends Entity<D>> {
+export abstract class PipedriveEntityManager<D extends Record<string, any>, E extends PipedriveEntity<D>> {
   protected abstract Entity: new (
     id: string | null,
     adapter: PipedriveEntityAdapter<D>,
     downloadedData: Record<string, string>,
     data: D,
-    indexer: Indexer<D>
+    indexer: PipedriveIndexer<D>
   ) => E;
   public abstract entityAdapter: PipedriveEntityAdapter<D>;
   protected get kind(): PipedriveEntityKind {
@@ -25,10 +25,12 @@ export abstract class EntityManager<D extends Record<string, any>, E extends Ent
 
   public importEntities(rawEntities: readonly FullEntity[]) {
     const prelinkedAssociations = new Map<string, Set<RelativeAssociation>>();
-
+    const i = 1;
+    console.debug(this.entityAdapter.kind, 'type rawEntities to import: ', rawEntities.length);
     for (const rawEntity of rawEntities) {
-      if (this.entityAdapter.shouldReject?.(rawEntity.properties)) continue;
-
+      if (this.entityAdapter.shouldReject?.(rawEntity.properties)) {
+        continue;
+      }
       const data = mapObject(this.entityAdapter.data, (spec) => {
         const remoteValue = spec.property ? rawEntity.properties[spec.property] : null;
         return spec.down(remoteValue);
@@ -55,10 +57,10 @@ export abstract class EntityManager<D extends Record<string, any>, E extends Ent
   public linkEntities(
     prelinkedAssociations: Map<string, Set<RelativeAssociation>>,
     managers: {
-      [K in `${EntityKind}Manager`]: EntityManager<any, any>;
+      [K in `${PipedriveEntityKind}Manager`]: PipedriveEntityManager<any, any>;
     }
   ) {
-    const toKinds = new Set<EntityKind>(['company', 'contact', 'deal']);
+    const toKinds = new Set<PipedriveEntityKind>(['organization', 'person', 'deal']);
 
     for (const [meId, rawAssocs] of prelinkedAssociations) {
       for (const rawAssoc of rawAssocs) {
@@ -68,7 +70,7 @@ export abstract class EntityManager<D extends Record<string, any>, E extends Ent
         const [toKindRaw, youId] = rawAssoc.split(':') as [string, string];
         let toKind = toKindRaw.replace(/_unlabeled$/, '');
 
-        let otherKind: EntityKind;
+        let otherKind: PipedriveEntityKind;
         if (toKinds.has(toKind as any)) {
           otherKind = toKind as any;
         } else {
@@ -81,13 +83,16 @@ export abstract class EntityManager<D extends Record<string, any>, E extends Ent
             }
           }
 
-          const bothKinds = new Set(toKind.split('_to_') as EntityKind[]);
+          const bothKinds = new Set(toKind.split('_to_') as PipedriveEntityKind[]);
           bothKinds.delete(me.kind);
           otherKind = [...bothKinds][0];
         }
 
         const you = managers[`${otherKind}Manager`].get(youId);
-        if (!you) throw new Error(`Couldn't find kind=${toKindRaw} id=${youId}`);
+        if (!you)
+          throw new Error(
+            `Couldn't find kind=${toKindRaw} id=${youId}. Assoc: ${JSON.stringify(rawAssoc)}, me: ${meId}`
+          );
 
         me.addAssociation(you, { firstSide: true, initial: true });
       }
@@ -130,7 +135,7 @@ export abstract class EntityManager<D extends Record<string, any>, E extends Ent
   }
 }
 
-class Index<E extends Entity<any>> {
+class Index<E extends PipedriveEntity<any>> {
   private map = new Map<string, E>();
   public constructor(private keysFor: (e: E) => string[]) {}
 

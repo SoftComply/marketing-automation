@@ -6,12 +6,57 @@ import { Hubspot, HubspotConfig } from '../hubspot/hubspot';
 import { ConsoleLogger } from '../log/console';
 import { MultiDownloadLogger } from '../log/download';
 import { MarketplaceAPI } from '../marketplace/api/api';
+import { Pipedrive, PipedriveConfig } from '../pipedrive/pipedrive';
+import PipedriveAPI from '../pipedrive/api';
 
 export async function downloadAllData(console: ConsoleLogger, hubspotConfig: HubspotConfig) {
   const hubspotAPI = new HubspotAPI(console);
   const marketplaceAPI = new MarketplaceAPI();
 
   const hubspot = new Hubspot(hubspotConfig);
+
+  console.printInfo('Downloader', 'Starting downloads with API');
+  const logbox = new MultiDownloadLogger(console);
+
+  //   const data = await promiseAllProperties({
+  //     tlds: logbox.wrap('Tlds', () => downloadAllTlds()),
+  //
+  //     licensesWithDataInsights: logbox.wrap('Licenses With Data Insights', (progress) =>
+  //       marketplaceAPI.downloadLicensesWithDataInsights(progress)
+  //     ),
+  //
+  //     licensesWithoutDataInsights: logbox.wrap('Licenses Without Data Insights', () =>
+  //       marketplaceAPI.downloadLicensesWithoutDataInsights()
+  //     ),
+  //
+  //     transactions: logbox.wrap('Transactions', () => marketplaceAPI.downloadTransactions()),
+  //
+  //     freeDomains: logbox.wrap('Free Email Providers', () => downloadFreeEmailProviders()),
+  //
+  //     rawDeals: logbox.wrap('Deals', () => hubspotAPI.downloadHubspotEntities(hubspot.dealManager.entityAdapter)),
+  //
+  //     rawCompanies: logbox.wrap('Companies', () =>
+  //       hubspotAPI.downloadHubspotEntities(hubspot.companyManager.entityAdapter)
+  //     ),
+  //
+  //     rawContacts: logbox.wrap('Contacts', () =>
+  //       hubspotAPI.downloadHubspotEntities(hubspot.contactManager.entityAdapter)
+  //     ),
+  //   });
+  //
+  //   const ms = dataManager.createDataSet(data);
+  //
+  //   logbox.done();
+  //   console.printInfo('Downloader', 'Done');
+  //
+  //   return ms;
+}
+
+export async function downloadAllPipedriveData(console: ConsoleLogger, pipedriveConfig: PipedriveConfig) {
+  const pipedriveAPI = new PipedriveAPI(console);
+  const marketplaceAPI = new MarketplaceAPI();
+
+  const pipedrive = new Pipedrive(pipedriveConfig);
 
   console.printInfo('Downloader', 'Starting downloads with API');
   const logbox = new MultiDownloadLogger(console);
@@ -31,16 +76,18 @@ export async function downloadAllData(console: ConsoleLogger, hubspotConfig: Hub
 
     freeDomains: logbox.wrap('Free Email Providers', () => downloadFreeEmailProviders()),
 
-    rawDeals: logbox.wrap('Deals', () => hubspotAPI.downloadHubspotEntities(hubspot.dealManager.entityAdapter)),
+    rawDeals: logbox.wrap('Deals', () => pipedriveAPI.downloadPipedriveEntities(pipedrive.dealManager.entityAdapter)),
 
     rawCompanies: logbox.wrap('Companies', () =>
-      hubspotAPI.downloadHubspotEntities(hubspot.companyManager.entityAdapter)
+      pipedriveAPI.downloadPipedriveEntities(pipedrive.organizationManager.entityAdapter)
     ),
 
     rawContacts: logbox.wrap('Contacts', () =>
-      hubspotAPI.downloadHubspotEntities(hubspot.contactManager.entityAdapter)
+      pipedriveAPI.downloadPipedriveEntities(pipedrive.personManager.entityAdapter)
     ),
   });
+
+  console.printInfo('DOWNLOADED RAW DEALS: ', data.rawDeals.length);
 
   const ms = dataManager.createDataSet(data);
 
@@ -57,7 +104,7 @@ async function downloadAllTlds(): Promise<string[]> {
     .split('\n')
     .splice(1)
     .map((s) => s.toLowerCase());
-  return tlds;
+  return tlds.filter((tld) => tld !== 'gmail');
 }
 
 async function downloadFreeEmailProviders(): Promise<string[]> {
@@ -65,5 +112,5 @@ async function downloadFreeEmailProviders(): Promise<string[]> {
     `https://f.hubspotusercontent40.net/hubfs/2832391/Marketing/Lead-Capture/free-domains-1.csv`
   );
   const domains = res.body.split(',\n');
-  return domains;
+  return domains.filter((domain) => domain !== 'gmail.com');
 }
