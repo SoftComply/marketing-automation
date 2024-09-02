@@ -26,7 +26,7 @@ export abstract class PipedriveEntityManager<D extends Record<string, any>, E ex
   public importEntities(rawEntities: readonly FullEntity[]) {
     const prelinkedAssociations = new Map<string, Set<RelativeAssociation>>();
     const i = 1;
-    console.debug(this.entityAdapter.kind, 'type rawEntities to import: ', rawEntities.length);
+    // console.debug(this.entityAdapter.kind, 'type rawEntities to import: ', rawEntities.length);
     for (const rawEntity of rawEntities) {
       if (this.entityAdapter.shouldReject?.(rawEntity.properties)) {
         continue;

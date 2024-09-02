@@ -12,10 +12,10 @@ import {
   pipedriveSettingsFromENV,
   transactionIdFromEnv,
 } from '../config/env';
-import { RawHubspotDataSet, RawPipedriveDataSet } from '../data/raw';
+import { RawPipedriveDataSet } from '../data/raw';
 import { ConsoleLogger } from '../log/console';
 import { CompanyManager } from '../model/company';
-import { ContactManager, HubspotContactConfig, PipedriveContactConfig } from '../model/contact';
+import { ContactManager, PipedriveContactConfig } from '../model/contact';
 import { DealManager, PipedriveDealConfig } from '../model/deal';
 import {
   Configuration,
@@ -301,7 +301,7 @@ export class PipeDriveOrganizationsApi extends OrganizationsApi {
     const updateEntityRequest: OrganizationsApiUpdateOrganizationRequest = {
       id,
       UpdateOrganizationRequest: {
-        name: 'Updated organization name',
+        ...data.properties,
       },
     };
     return this.updateOrganization(updateEntityRequest);
