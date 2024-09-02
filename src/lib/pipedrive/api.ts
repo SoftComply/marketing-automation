@@ -127,7 +127,7 @@ export default class PipedriveAPI {
       try {
         console.log(`Updating ${kind} entity ${index + 1} of ${numberOfEntities}`);
         await new Promise((resolve) => setTimeout(resolve, 5)); // 1000 ms = 1 second
-        const { data, success } = await this.apiFor(kind).update(entity);
+        const { data } = await this.apiFor(kind).update(entity);
         if (data) {
           const propertyKeys = Object.keys(data);
           const properties = propertyKeys.reduce((acc: Record<string, string>, key: string) => {

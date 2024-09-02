@@ -296,14 +296,26 @@ export class PipeDriveOrganizationsApi extends OrganizationsApi {
   }
 
   public async update(data: ExistingPipedriveEntity) {
-    console.log('%c ---> Update organization data: ', 'color:#0F0;', data);
     const id = data.id ? +data.id : 0;
     const updateEntityRequest: OrganizationsApiUpdateOrganizationRequest = {
       id,
-      UpdateOrganizationRequest: {
-        ...data.properties,
-      },
+      UpdateOrganizationRequest: {},
     };
+    for (const key in data.properties) {
+      if (key === 'type') continue;
+      const pipedriveKey = key === 'phone.0.value' ? 'phone' : key;
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      updateEntityRequest.UpdateOrganizationRequest[pipedriveKey] = data.properties?.[key];
+    }
+    if (
+      updateEntityRequest.UpdateOrganizationRequest &&
+      Object.keys(updateEntityRequest.UpdateOrganizationRequest).length === 0
+    ) {
+      console.log('No changes for organization to update');
+      return {};
+    }
+    console.log('---> Update organization data: ', updateEntityRequest);
     return this.updateOrganization(updateEntityRequest);
   }
 
