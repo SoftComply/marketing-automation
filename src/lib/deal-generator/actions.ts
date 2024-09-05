@@ -81,7 +81,7 @@ export class ActionGenerator {
       const dealStage = event.licenses.some((l) => l.active) ? DealStage.EVAL : DealStage.CLOSED_LOST;
       return this.makeCreateAction(records, latestLicense, dealStage);
     } else if (deal.isEval()) {
-      const dealStage = event.licenses.some((l) => l.active) ? DealStage.EVAL : DealStage.CLOSED_LOST;
+      const dealStage = latestLicense.active ? DealStage.EVAL : DealStage.CLOSED_LOST;
       return this.makeUpdateAction(records, deal, latestLicense, dealStage);
     } else {
       return this.makeUpdateAction(records, deal, latestLicense);
@@ -105,8 +105,11 @@ export class ActionGenerator {
     const metaAction = this.maybeMakeMetaAction(event, deal, event.transaction?.data.vendorAmount ?? 0);
     if (metaAction) return metaAction;
 
-    if (deal) {
-      const record = event.transaction || getLatestLicense(event);
+    const record = event.transaction || getLatestLicense(event);
+    if (deal && record instanceof License) {
+      const dealStage = record.active ? DealStage.CLOSED_WON : DealStage.CLOSED_LOST;
+      return this.makeUpdateAction(records, deal, record, dealStage);
+    } else if (deal && record instanceof Transaction) {
       const dealStage = event.transaction?.refunded ? DealStage.CLOSED_LOST : DealStage.CLOSED_WON;
       return this.makeUpdateAction(records, deal, record, dealStage);
     } else if (event.transaction) {
