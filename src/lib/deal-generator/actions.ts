@@ -105,11 +105,13 @@ export class ActionGenerator {
     const metaAction = this.maybeMakeMetaAction(event, deal, event.transaction?.data.vendorAmount ?? 0);
     if (metaAction) return metaAction;
 
+    const latestLicense = getLatestLicense(event);
     const record = event.transaction || getLatestLicense(event);
-    if (deal && record instanceof License) {
-      const dealStage = record.active ? DealStage.CLOSED_WON : DealStage.CLOSED_LOST;
-      return this.makeUpdateAction(records, deal, record, dealStage);
-    } else if (deal && record instanceof Transaction) {
+
+    // if the license is not active, the deal should be closed lost
+    if (deal && !latestLicense.active) {
+      return this.makeUpdateAction(records, deal, record, DealStage.CLOSED_LOST);
+    } else if (deal) {
       const dealStage = event.transaction?.refunded ? DealStage.CLOSED_LOST : DealStage.CLOSED_WON;
       return this.makeUpdateAction(records, deal, record, dealStage);
     } else if (event.transaction) {
